@@ -64,7 +64,9 @@ graph LR
     Company -->|OFFERS| Job
     Job -->|REQUIRES| Skill
     Skill -->|RELATED_TO| Skill
-## Sample Data
+ ```
+ 
+### Sample Data
 
 ### Companies
 
