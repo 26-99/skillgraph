@@ -47,7 +47,23 @@ Company ──OFFERS──> Job
 Job ──REQUIRES──> Skill
 Skill ──RELATED_TO──> Skill
 ```
+## Why a Graph Database?
 
+SkillGraph focuses on relationships between companies, jobs and skills.
+
+A graph database is a natural fit because the application needs to traverse relationships such as:
+
+Company → Job → Required Skill → Related Skill
+
+These connected queries are easier to model and explore using a graph database than with multiple relational tables and joins. Graph traversal also makes it straightforward to discover related skills and multi-hop connections for a given job or skill.
+
+## Graph Data Model
+
+```mermaid
+graph LR
+    Company -->|OFFERS| Job
+    Job -->|REQUIRES| Skill
+    Skill -->|RELATED_TO| Skill
 ## Sample Data
 
 ### Companies
@@ -258,6 +274,20 @@ The application has been tested with:
 - CognoDB connectivity
 - Spring Boot application startup
 - Frontend search functionality
+
+## UI Screenshots
+
+### Skill Search – Java
+
+![SkillGraph Java Skill Search](docs/skillgraph-ui-java.png)
+
+### Skill Search – AWS
+
+![SkillGraph AWS Skill Search](docs/skillgraph-ui-aws.png)
+
+### Skill Search – SQL
+
+![SkillGraph SQL Skill Search](docs/skillgraph-ui-sql.png)
 
 ## Future Improvements
 
