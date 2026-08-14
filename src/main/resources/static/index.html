@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillGraph - Job & Skill Explorer</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        header {
+            background: #111827;
+            color: white;
+            padding: 28px 8%;
+        }
+
+        header h1 {
+            margin: 0 0 8px;
+            font-size: 30px;
+        }
+
+        header p {
+            margin: 0;
+            color: #cbd5e1;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .search-box {
+            background: white;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            display: flex;
+            gap: 12px;
+        }
+
+        input {
+            flex: 1;
+            padding: 14px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 14px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .loading {
+            background: #e0f2fe;
+            color: #075985;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .empty {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        section {
+            margin-top: 30px;
+        }
+
+        section h2 {
+            margin-bottom: 15px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .card h3 {
+            margin-top: 0;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 7px 12px;
+            margin: 5px;
+            border-radius: 20px;
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #6b7280;
+        }
+
+        @media (max-width: 600px) {
+            .search-box {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>SkillGraph</h1>
+    <p>Explore relationships between jobs, skills and related technologies.</p>
+</header>
+
+<main>
+
+    <div class="search-box">
+        <input
+                id="skillInput"
+                type="text"
+                placeholder="Enter a skill, e.g. Java"
+                value="Java"
+        >
+        <button onclick="searchSkill()">Search</button>
+    </div>
+
+    <div id="loading" class="status loading">
+        Searching the SkillGraph...
+    </div>
+
+    <div id="error" class="status error"></div>
+
+    <div id="empty" class="status empty">
+        No results found. Try another skill.
+    </div>
+
+    <section id="jobsSection" class="hidden">
+        <h2>Jobs requiring this skill</h2>
+        <div id="jobs" class="cards"></div>
+    </section>
+
+    <section id="relatedSection" class="hidden">
+        <h2>Related skills</h2>
+        <div id="related"></div>
+    </section>
+
+    <section id="multiHopSection" class="hidden">
+        <h2>Graph connections</h2>
+        <div id="multiHop" class="cards"></div>
+    </section>
+
+</main>
+
+<footer>
+    SkillGraph · Powered by CognoDB
+</footer>
+
+<script>
+
+    async function searchSkill() {
+
+        const skill = document.getElementById("skillInput").value.trim();
+
+        if (!skill) {
+            showError("Please enter a skill.");
+            return;
+        }
+
+        hideAllMessages();
+
+        document.getElementById("loading").style.display = "block";
+
+        try {
+
+            const encodedSkill = encodeURIComponent(skill);
+
+            const [jobsResponse, relatedResponse, multiHopResponse] =
+                await Promise.all([
+                    fetch(`/api/jobs?skill=${encodedSkill}`),
+                    fetch(`/api/related-skills?skill=${encodedSkill}`),
+                    fetch(`/api/multi-hop?skill=${encodedSkill}`)
+                ]);
+
+            if (!jobsResponse.ok || !relatedResponse.ok || !multiHopResponse.ok) {
+                throw new Error("Unable to retrieve data from the server.");
+            }
+
+            const jobs = await jobsResponse.json();
+            const related = await relatedResponse.json();
+            const multiHop = await multiHopResponse.json();
+
+            document.getElementById("loading").style.display = "none";
+
+            if (
+                jobs.length === 0 &&
+                related.length === 0 &&
+                multiHop.length === 0
+            ) {
+                document.getElementById("empty").style.display = "block";
+                return;
+            }
+
+            displayJobs(jobs);
+            displayRelatedSkills(related);
+            displayMultiHop(multiHop);
+
+        } catch (error) {
+
+            document.getElementById("loading").style.display = "none";
+
+            showError(
+                "Could not connect to SkillGraph. Please make sure the application is running."
+            );
+        }
+    }
+
+    function displayJobs(jobs) {
+
+        const section = document.getElementById("jobsSection");
+        const container = document.getElementById("jobs");
+
+        container.innerHTML = "";
+
+        jobs.forEach(job => {
+
+            const card = document.createElement("div");
+            card.className = "card";
+
+            card.innerHTML = `
+                <h3>${job.job}</h3>
+                <p>Required skill: <strong>${job.skill}</strong></p>
+            `;
+
+            container.appendChild(card);
+        });
+
+        section.classList.remove("hidden");
+    }
+
+    function displayRelatedSkills(related) {
+
+        const section = document.getElementById("relatedSection");
+        const container = document.getElementById("related");
+
+        container.innerHTML = "";
+
+        related.forEach(item => {
+
+            const tag = document.createElement("span");
+            tag.className = "tag";
+            tag.textContent = item.relatedSkill;
+
+            container.appendChild(tag);
+        });
+
+        section.classList.remove("hidden");
+    }
+
+    function displayMultiHop(results) {
+
+        const section = document.getElementById("multiHopSection");
+        const container = document.getElementById("multiHop");
+
+        container.innerHTML = "";
+
+        results.forEach(item => {
+
+            const card = document.createElement("div");
+            card.className = "card";
+
+            card.innerHTML = `
+                <h3>${item.job}</h3>
+                <p>
+                    ${item.requiredSkill}
+                    → related to →
+                    ${item.relatedSkill}
+                </p>
+            `;
+
+            container.appendChild(card);
+        });
+
+        section.classList.remove("hidden");
+    }
+
+    function showError(message) {
+
+        const error = document.getElementById("error");
+
+        error.textContent = message;
+        error.style.display = "block";
+    }
+
+    function hideAllMessages() {
+
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("error").style.display = "none";
+        document.getElementById("empty").style.display = "none";
+
+        document.getElementById("jobsSection").classList.add("hidden");
+        document.getElementById("relatedSection").classList.add("hidden");
+        document.getElementById("multiHopSection").classList.add("hidden");
+    }
+
+</script>
+
+</body>
+</html>
